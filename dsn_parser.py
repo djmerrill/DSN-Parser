@@ -18,7 +18,9 @@ netclass_preamble = """
     (uvia_dia 0.3)
     (uvia_drill 0.1)"""
 
-scale_factor = 0.05
+scale_factor = 0.0254
+component_x_offset = 100
+component_y_offset = 100
 
 def scale_str(s):
     return str(float(s) * scale_factor)
@@ -109,8 +111,11 @@ def main(arguments):
     nets = {}
     kicad_nets = []
     netclass_str = netclass_preamble
+    pins_to_nets = {}
+    net_name_to_net_number = {}
     for n in node_types['net']:
         net_name = n.word(1)
+        net_name_to_net_number[net_name] = len(kicad_nets)
         kicad_nets.append('(net ' + str(len(kicad_nets)) + ' ' + net_name + ')')
         netclass_str += '\n    (add_net ' + net_name + ')'
         pins = [c for c in n.children if c.keyword() == 'pins']
@@ -130,6 +135,7 @@ def main(arguments):
             component_name = ps[0]
             pin_number = ps[1]
             print('\t', component_name, pin_number)
+            pins_to_nets[(component_name, pin_number)] = net_name
     netclass_str += '\n  )'
 
 
@@ -148,8 +154,8 @@ def main(arguments):
         place = place[0]
         ref_des = place.word(1)
         components[ref_des] = n
-        x = scale_str(place.word(2))
-        y = scale_str(place.word(3))
+        x = str(float(scale_str(place.word(2))) + component_x_offset)
+        y = str(float(scale_str(place.word(3))) + component_y_offset)
         side = place.word(4)
         rotation = place.word(5)
         print(image_name, ref_des, x, y, side, rotation)
@@ -212,6 +218,10 @@ def main(arguments):
                 shape_type = shape.keyword()
                 shape_types.add(shape_type)
                 print('\t\t' + shape_type + ' ' + s.text)
+
+                # handle each shape seperately
+                # This should be refactored so that there is less repeated code
+
                 if shape_type == 'rect':
                     pad_str += ' rect'
                     layer = shape.word(1)
@@ -228,6 +238,12 @@ def main(arguments):
                             layer = 'Top'
 
                     pad_str += f' (layers {layer.lower().capitalize()})'
+                    pin_key = (ref_des, pad_num)
+                    if pin_key in pins_to_nets:
+                        net = pins_to_nets[(ref_des, pad_num)]
+                        net_num = net_name_to_net_number[net]
+                        pad_str += f'\n      (net {net_num} {net})'
+
                     pad_str += ')\n'
                     module_str += pad_str
 
@@ -246,6 +262,21 @@ def main(arguments):
                             layer = 'Top'
 
                     pad_str += f' (layers {layer.lower().capitalize()})'
+                    
+                    pin_key = (ref_des, pad_num)
+                    if pin_key in pins_to_nets:
+                        net = pins_to_nets[(ref_des, pad_num)]
+                        net_num = net_name_to_net_number[net]
+                        pad_str += f'\n      (net {net_num} {net})'
+                    # elif ref_des == 'U6':
+                    #     print('#'*80)
+                    #     print(n.text)
+                    #     print('#'*80)
+                    #     print(pin_key)
+                    #     print('#'*80)
+                    #     print([k for k in pins_to_nets.keys() if k[0] == 'U6'])
+                    #     raise Exception('U6 Error')
+
                     pad_str += ')\n'
                     module_str += pad_str
 
