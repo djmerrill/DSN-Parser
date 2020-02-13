@@ -18,14 +18,17 @@ netclass_preamble = """
     (uvia_dia 0.3)
     (uvia_drill 0.1)"""
 
-scale_factor = 0.0254
-component_x_offset = 100
+scale_factor = 0.0254 # converts from mils to mm
+component_x_offset = 100 # try to get things in the middle of the page, just for convience
 component_y_offset = 100
 
 def scale_str(s):
     return str(float(s) * scale_factor)
 
 class Node(object):
+    """
+    S-expression node class. Has parents, children, and text. Doesn't handle quoted escapes yet but it should in the future.
+    """
     def __init__(self, text='', parent=None, children=None, t_start=0, t_end=0):
         self.text = text
         self.t_start = t_start
@@ -300,8 +303,8 @@ def main(arguments):
 
   (general
     (thickness 1.6)
-    (drawings 19)
-    (tracks 813)
+    (drawings 0)
+    (tracks 0)
     (zones 0)
     (modules {num_modules})
     (nets {num_nets})
