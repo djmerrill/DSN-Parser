@@ -116,6 +116,7 @@ def main(arguments):
     netclass_str = netclass_preamble
     pins_to_nets = {}
     net_name_to_net_number = {}
+    pin_counts = {}
     for n in node_types['net']:
         net_name = n.word(1)
         net_name_to_net_number[net_name] = len(kicad_nets)
@@ -139,6 +140,11 @@ def main(arguments):
             pin_number = ps[1]
             print('\t', component_name, pin_number)
             pins_to_nets[(component_name, pin_number)] = net_name
+            try:
+                pin_counts[net_name] += 1
+            except KeyError:
+                pin_counts[net_name] = 1
+
     netclass_str += '\n  )'
 
 
@@ -231,7 +237,10 @@ def main(arguments):
                     pad_str += f' (at {pad_x} {pad_y} {pad_rotation})'
 
                     width = float(scale_str(shape.word(2))) - float(scale_str(shape.word(4)))
+                    width = abs(width)
                     height = float(scale_str(shape.word(3))) - float(scale_str(shape.word(5)))
+                    height = abs(height)
+                    
                     pad_str += f' (size {width} {height})'
 
                     if side.lower() == 'bottom':
@@ -402,6 +411,13 @@ def main(arguments):
 
     with open(arguments['<output_file>'], 'w') as f:
         f.write(kicad_str)
+
+
+    print('#'*80)
+    ordered = sorted(list(pin_counts.keys()), key=lambda x: pin_counts[x])
+    for o in ordered:
+        print(o, pin_counts[o])
+    print('total nets: ' + str(len(node_types)))
 
 
 if __name__ == "__main__":
