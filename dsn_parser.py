@@ -80,7 +80,7 @@ def main(arguments):
     nodes = []
     for i, c in enumerate(text):
         if c == '(':
-            print(str(len(nodes)), 'New node:', text[i:i+15].strip())
+            # print(str(len(nodes)), 'New node:', text[i:i+15].strip())
             if len(node_stack) > 0:
                 node_stack.append(Node(parent=node_stack[-1]))
             else:
@@ -94,7 +94,7 @@ def main(arguments):
     node_types = {}
     for n in nodes:
         n.text = text[n.t_start:n.t_end]
-        print(n.keyword(), n.text)
+        # print(n.keyword(), n.text)
         try:
             node_types[n.keyword()].append(n)
         except KeyError:
@@ -240,7 +240,7 @@ def main(arguments):
                     width = abs(width)
                     height = float(scale_str(shape.word(3))) - float(scale_str(shape.word(5)))
                     height = abs(height)
-                    
+
                     pad_str += f' (size {width} {height})'
 
                     if side.lower() == 'bottom':
@@ -301,6 +301,85 @@ def main(arguments):
     print()
     print('Shape types: ' + str(shape_types))
 
+
+
+    # wiring for viewing shapes
+    zone_strings = []
+    for n in node_types['wiring']:
+        print('#'*80, 'Got wiring node', n)
+        wires = [w for w in n.children if w.keyword() == 'wire']
+        print('Got', len(wires), 'wires')
+        polygons = []
+
+        for w in wires:
+            w_polys = [p for p in w.children if p.keyword() == 'polygon']
+            polygons += w_polys
+
+        for p in polygons:
+            print(p.parent.text)
+
+            print(p.text)
+            layer = p.word(1).lower().capitalize()
+            if layer == 'Lyr3':
+                layer = 'Route2'
+            if layer == 'Lyr4':
+                layer = 'Route15'
+
+            net_name = [n.word(1) for n in p.parent.children if n.keyword() == 'net']
+            assert len(net_name) == 1
+            net_name = net_name[0]
+            assert p.word(2) == '0' # not sure what this field is
+            points = []
+            for point in p.text.split()[3:]:
+                if point.startswith('('):
+                    break
+                points.append(point.strip().strip('()'))
+
+            points = [float(t) for t in points]
+
+            print(points)
+            assert len(points) % 2 == 0
+
+            """
+              (zone (net 0) (net_name "") (layer F.SilkS) (tstamp 0) (hatch edge 0.508)
+                (connect_pads (clearance 0.508))
+                (min_thickness 0.254)
+                (fill yes (arc_segments 32) (thermal_gap 0.508) (thermal_bridge_width 0.508))
+                (polygon
+                  (pts
+                    (xy 104.68 101.83) (xy 99.93 70.51) (xy 135.22 70.11) (xy 148.7 98.66) (xy 124.91 129.19)
+                  )
+                )
+              )
+            """
+            zone_str = """
+  (zone (net """ + str(net_name_to_net_number[net_name]) + ') (layer ' + layer + """) (tstamp 0) (hatch edge 0.508)
+    (connect_pads (clearance 0.508))
+    (min_thickness 0.254)
+    (fill yes (arc_segments 32) (thermal_gap 0.508) (thermal_bridge_width 0.508))
+    (polygon
+      (pts
+   """
+            point_index = 0
+            for point in points:
+                try:
+                    x = scale_str(str(points[point_index]))
+                    y = scale_str(str(points[point_index+1]))
+
+                    x = str(float(x) + component_x_offset)
+                    y = str(float(y) + component_y_offset)
+
+                    zone_str += ' (xy ' + x
+                    zone_str += ' ' + y + ')'
+                except IndexError:
+                    break
+                point_index += 2
+            zone_str += '\n    )))'
+            print(zone_str)
+            zone_strings.append(zone_str)
+
+
+        print('Got', len(polygons), 'polygons')
 
 
     print()
@@ -406,6 +485,7 @@ def main(arguments):
     kicad_str += '\n  '.join(kicad_nets)
     kicad_str += netclass_str
     kicad_str += '\n  '.join(kicad_module_strs)
+    kicad_str += '\n'.join(zone_strings)
     kicad_str += '\n)'
     print(kicad_str)
 
