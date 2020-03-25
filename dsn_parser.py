@@ -167,13 +167,17 @@ def main(arguments):
         y = str(float(scale_str(place.word(3))) + component_y_offset)
         side = place.word(4)
         rotation = place.word(5)
+        rotation = str(-float(rotation))
         print(image_name, ref_des, x, y, side, rotation)
+        print('Component rotation:', rotation)
 
         module_str += ref_des
+        mirrored = False
         if side.lower() == 'front':
             side = 'Top'
         elif side.lower() == 'back':
             side = 'Bottom'
+            mirrored = True
         else:
             raise Exception('Unrecognized side: ' + str(module_str))
         module_str += ' (layer ' + side.lower().capitalize() + ')'
@@ -193,6 +197,11 @@ def main(arguments):
             pad_num = pad.word(2)
             pad_x = scale_str(pad.word(3))
             pad_y = scale_str(pad.word(4))
+
+            if mirrored:
+                pad_x = str(-float(pad_x))
+                # pad_y = str(-float(pad_y))
+
             padstack = padstacks[padstack_name]
             print('\tpad', padstack_name, pad_num, pad_x, pad_y)
             pad_type = [c for c in padstack.children if c.keyword() == 'type'][0].word(1)
@@ -298,6 +307,7 @@ def main(arguments):
 
         module_str += '  )'
         kicad_module_strs.append(module_str)
+
     print()
     print('Shape types: ' + str(shape_types))
 
